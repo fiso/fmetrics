@@ -46,6 +46,17 @@ function prompt (text) {
   });
 }
 
+function timestamp () {
+  const d = new Date();
+  return `${
+    d.getFullYear()}-${
+    String(d.getMonth() + 1).padStart(2, '0')}-${
+    String(d.getDate()).padStart(2, '0')}@${
+    String(d.getHours()).padStart(2, '0')}:${
+    String(d.getMinutes()).padStart(2, '0')}:${
+    String(d.getSeconds()).padStart(2, '0')}`;
+}
+
 async function getConfig () {
   const {consumerKey, consumerSecret} = await (async () => {
     try {
@@ -167,7 +178,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
     return followers;
   })();
 
-  fs.writeFileSync(`${fileroot}snapshots/${new Date()}.json`, JSON.stringify(
+  fs.writeFileSync(`${fileroot}snapshots/${timestamp()}.json`, JSON.stringify(
       followers, null, 2,
   ));
 }
