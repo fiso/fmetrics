@@ -134,6 +134,18 @@ function authenticate (consumerKey, consumerSecret) {
   });
 }
 
+function filterUser (user) {
+  return {
+    id: user.id,
+    id_str: user.id_str,
+    name: user.name,
+    screen_name: user.screen_name,
+    followers_count: user.followers_count,
+    friends_count: user.friends_count,
+    verified: user.verified,
+  };
+}
+
 async function fetchFollowers (consumerKey, consumerSecret) {
   const {tokenKey, tokenSecret} = await (async function () {
     try {
@@ -169,7 +181,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
         include_user_entities: false,
         cursor,
       });
-      followers = followers.concat(page.users);
+      followers = followers.concat(page.users.map(filterUser));
       cursor = page.next_cursor_str;
       if (cursor === '0') {
         cursor = null;

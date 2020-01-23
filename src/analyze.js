@@ -27,7 +27,11 @@ for (const file of files) {
         lastf => !followers.find(f => f.id_str === lastf.id_str));
     const gained = followers.filter(
         f => !last.find(lastf => f.id_str === lastf.id_str));
-    console.log(lost, gained);
+    const out = `${gained.length > 0 ? '+' + gained.length + ' ' : ''
+    }${lost.length > 0 ? '-' + lost.length : ''}`;
+    if (out) {
+      console.log(out);
+    }
   }
 
   last = followers;
