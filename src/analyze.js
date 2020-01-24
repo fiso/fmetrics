@@ -1,15 +1,27 @@
 const fs = require('fs');
+const PushBullet = require('pushbullet');
 
 const dev = process.env.NODE_ENV === 'development';
-const directory = dev ?
-  `${__dirname}/../data/snapshots/` :
-  `${process.env.HOME}/.fmetrics/snapshots/`;
+const fileroot = dev ?
+  `${__dirname}/../data/` :
+  `${process.env.HOME}/.fmetrics/`;
+const directory = `${fileroot}snapshots/`;
+
+const pusher = (function () {
+  try {
+    const pb = require(`${fileroot}pushbullet.json`);
+    return new PushBullet(pb.apiKey);
+  } catch (e) {
+    return null;
+  }
+})();
 
 const files = fs.readdirSync(directory)
     .map(file => `${directory}${file}`)
     .filter(file => !fs.statSync(file).isDirectory())
     .filter(file => file.toLowerCase().endsWith('.json'))
     .sort()
+    .slice(-2)
 ;
 
 const names = users =>
@@ -38,7 +50,11 @@ for (const file of files) {
     gained.length > 0 ? `+${gained.length} (${names(gained)}) ` : ''}${
     lost.length > 0 ? `-${lost.length} (${names(lost)}) ` : ''}`;
     if (out) {
-      console.log(out);
+      if (pusher) {
+        pusher.note({}, 'Followers changed', out);
+      } else {
+        console.log(out);
+      }
     }
   }
 
