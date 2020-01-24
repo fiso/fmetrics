@@ -1,12 +1,19 @@
 const fs = require('fs');
 
-const directory = `${__dirname}/../data/snapshots/`;
+const dev = process.env.NODE_ENV === 'development';
+const directory = dev ?
+  `${__dirname}/../data/snapshots/` :
+  `${process.env.HOME}/.fmetrics/snapshots/`;
 
 const files = fs.readdirSync(directory)
     .map(file => `${directory}${file}`)
     .filter(file => !fs.statSync(file).isDirectory())
     .filter(file => file.toLowerCase().endsWith('.json'))
     .sort()
+;
+
+const names = users =>
+  users.map(u => u.screen_name).join(', ')
 ;
 
 let last = null;
@@ -27,8 +34,9 @@ for (const file of files) {
         lastf => !followers.find(f => f.id_str === lastf.id_str));
     const gained = followers.filter(
         f => !last.find(lastf => f.id_str === lastf.id_str));
-    const out = `${gained.length > 0 ? '+' + gained.length + ' ' : ''
-    }${lost.length > 0 ? '-' + lost.length : ''}`;
+    const out = `${
+    gained.length > 0 ? `+${gained.length} (${names(gained)}) ` : ''}${
+    lost.length > 0 ? `-${lost.length} (${names(lost)}) ` : ''}`;
     if (out) {
       console.log(out);
     }
