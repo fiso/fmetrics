@@ -47,14 +47,13 @@ function prompt (text) {
 }
 
 function timestamp () {
-  const d = new Date();
-  return `${
+  return (d => `${
     d.getFullYear()}-${
     String(d.getMonth() + 1).padStart(2, '0')}-${
     String(d.getDate()).padStart(2, '0')}@${
     String(d.getHours()).padStart(2, '0')}:${
     String(d.getMinutes()).padStart(2, '0')}:${
-    String(d.getSeconds()).padStart(2, '0')}`;
+    String(d.getSeconds()).padStart(2, '0')}`)(new Date());
 }
 
 async function getConfig () {
@@ -134,7 +133,7 @@ function authenticate (consumerKey, consumerSecret) {
   });
 }
 
-function filterUser (user) {
+function formatUser (user) {
   return {
     id: user.id,
     id_str: user.id_str,
@@ -147,6 +146,7 @@ function filterUser (user) {
 }
 
 async function fetchFollowers (consumerKey, consumerSecret) {
+  // 1. Authenticate somehow, either via saved credentials or oauth flow
   const {tokenKey, tokenSecret} = await (async function () {
     try {
       const {tokenKey, tokenSecret} = require(`${fileroot}clientsecrets.json`);
@@ -160,20 +160,25 @@ async function fetchFollowers (consumerKey, consumerSecret) {
     return await authenticate(consumerKey, consumerSecret);
   })();
 
+  // 1b. If authentication failed, we can't proceed
   if (!tokenKey || !tokenSecret) {
+    console.error('Authentication failed, exiting');
     process.exit(1);
   }
 
-  const twitterClient = new Twitter({
-    consumer_key: consumerKey,
-    consumer_secret: consumerSecret,
-    access_token_key: tokenKey,
-    access_token_secret: tokenSecret,
-  });
-
+  // 2. Make repeated calls to followers/list.json until we've fetched all
+  //    pages. Run the users through a formatting function and save them all in
+  //    the returned array.
   const followers = await (async function () {
     let followers = [];
     let cursor = '-1';
+    const twitterClient = new Twitter({
+      consumer_key: consumerKey,
+      consumer_secret: consumerSecret,
+      access_token_key: tokenKey,
+      access_token_secret: tokenSecret,
+    });
+
     do {
       const page = await twitterClient.get('followers/list.json', {
         count: 200,
@@ -181,7 +186,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
         include_user_entities: false,
         cursor,
       });
-      followers = followers.concat(page.users.map(filterUser));
+      followers = followers.concat(page.users.map(formatUser));
       cursor = page.next_cursor_str;
       if (cursor === '0') {
         cursor = null;
@@ -190,6 +195,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
     return followers;
   })();
 
+  // 3. Write the list of followers to a timestamped json file
   fs.writeFileSync(`${fileroot}snapshots/${timestamp()}.json`, JSON.stringify(
       followers, null, 2,
   ));
