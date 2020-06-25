@@ -17,11 +17,18 @@ const fileroot = dev ?
   `${__dirname}/../data/` :
   `${process.env.HOME}/.fmetrics/`;
 
-if (dev) {
-  console.log('Running in development mode');
+function log (...args) {
+  if (!dev) {
+    return;
+  }
+
+  console.log(...args);
 }
 
+log('Running in development mode');
+
 try {
+  log('Making sure snapshot directory exists...');
   fs.mkdirSync(`${fileroot}snapshots`, {recursive: true});
 } catch (e) {
   if (e.code !== 'EEXIST') {
@@ -147,6 +154,7 @@ function formatUser (user) {
 
 async function fetchFollowers (consumerKey, consumerSecret) {
   // 1. Authenticate somehow, either via saved credentials or oauth flow
+  log('Verifying credentials...');
   const {tokenKey, tokenSecret} = await (async function () {
     try {
       const {tokenKey, tokenSecret} = require(`${fileroot}clientsecrets.json`);
@@ -157,6 +165,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
       // File not found
     }
 
+    log('Need new credentials, starting OAuth flow...');
     return await authenticate(consumerKey, consumerSecret);
   })();
 
@@ -169,6 +178,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
   // 2. Make repeated calls to followers/list.json until we've fetched all
   //    pages. Run the users through a formatting function and save them all in
   //    the returned array.
+  log('Credentials verified, starting follower fetch...');
   const followers = await (async function () {
     let followers = [];
     let cursor = '-1';
@@ -180,6 +190,7 @@ async function fetchFollowers (consumerKey, consumerSecret) {
     });
 
     do {
+      log(`Page ${cursor}...`);
       const page = await twitterClient.get('followers/list.json', {
         count: 200,
         skip_status: true,
@@ -192,16 +203,21 @@ async function fetchFollowers (consumerKey, consumerSecret) {
         cursor = null;
       }
     } while (cursor);
+
+    log('All pages fetched');
     return followers;
   })();
 
   // 3. Write the list of followers to a timestamped json file
-  fs.writeFileSync(`${fileroot}snapshots/${timestamp()}.json`, JSON.stringify(
+  const filename = `${fileroot}snapshots/${timestamp()}.json`;
+  log(`Saving snapshot ${filename}`);
+  fs.writeFileSync(filename, JSON.stringify(
       followers, null, 2,
   ));
 }
 
 async function performUpdate () {
+  log('Checking config...');
   const {consumerKey, consumerSecret} = await getConfig();
   fetchFollowers(consumerKey, consumerSecret);
 }
