@@ -94,10 +94,12 @@ function authenticate (consumerKey, consumerSecret) {
       consumerSecret,
       callbackURL: '/callback',
     },
-    function (tokenKey, tokenSecret, profile, cb) {
-      fs.writeFileSync(`${fileroot}clientsecrets.json`, JSON.stringify(
-          {tokenKey, tokenSecret}, null, 2,
-      ));
+    function onRecieveCredentials (tokenKey, tokenSecret, profile, cb) {
+      fs.writeFileSync(
+          `${fileroot}clientsecrets-${profile.id}.json`, JSON.stringify(
+              {tokenKey, tokenSecret}, null, 2,
+          ),
+      );
       resolve({tokenKey, tokenSecret});
       server.close();
       return cb(null, profile);
@@ -125,7 +127,7 @@ function authenticate (consumerKey, consumerSecret) {
           if (!req.user) {
             return passport.authenticate('twitter')(req, res);
           } else {
-            return res.send(req.user ? req.user.username : 'no user');
+            return res.send(`Authenticated as ${req.user.username}`);
           }
         });
 
@@ -152,12 +154,13 @@ function formatUser (user) {
   };
 }
 
-async function fetchFollowers (consumerKey, consumerSecret) {
+async function fetchFollowers (twitterUserId, {consumerKey, consumerSecret}) {
   // 1. Authenticate somehow, either via saved credentials or oauth flow
   log('Verifying credentials...');
-  const {tokenKey, tokenSecret} = await (async function () {
+  const {tokenKey, tokenSecret} = await (async function verifyCredentials () {
     try {
-      const {tokenKey, tokenSecret} = require(`${fileroot}clientsecrets.json`);
+      const {tokenKey, tokenSecret} = require(
+          `${fileroot}clientsecrets-${twitterUserId}.json`);
       if (tokenKey && tokenSecret) {
         return {tokenKey, tokenSecret};
       }
@@ -216,10 +219,10 @@ async function fetchFollowers (consumerKey, consumerSecret) {
   ));
 }
 
-async function performUpdate () {
+async function performUpdate (twitterUserId) {
   log('Checking config...');
-  const {consumerKey, consumerSecret} = await getConfig();
-  fetchFollowers(consumerKey, consumerSecret);
+  fetchFollowers(twitterUserId, await getConfig());
 }
 
-performUpdate();
+const twitterUserId = '14745143';
+performUpdate(twitterUserId);
